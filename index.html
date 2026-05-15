@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>コインパーキング台数算出ツール</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f0f0f;
+  --surface: #1a1a1a;
+  --surface2: #242424;
+  --border: #2e2e2e;
+  --text: #f0f0f0;
+  --text2: #888;
+  --text3: #555;
+  --accent: #c8f542;
+  --accent2: #42c8f5;
+  --accent3: #f5a742;
+  --red: #f54242;
+  --mono: 'DM Mono', monospace;
+  --sans: 'Noto Sans JP', sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh}
+
+header{border-bottom:1px solid var(--border);padding:1rem 2rem;display:flex;align-items:center;gap:12px}
+.logo{font-family:var(--mono);font-size:13px;color:var(--accent);letter-spacing:.1em}
+.logo-sub{font-size:12px;color:var(--text3);margin-left:4px}
+
+.main{max-width:900px;margin:0 auto;padding:2rem 1.5rem}
+
+/* Upload */
+.upload-card{border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:1.5rem}
+.upload-header{background:var(--surface);padding:.75rem 1.25rem;font-size:12px;color:var(--text3);font-family:var(--mono);letter-spacing:.08em;border-bottom:1px solid var(--border)}
+.upload-body{padding:1.5rem}
+.drop-zone{border:1.5px dashed var(--border);border-radius:8px;padding:2.5rem 1rem;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+.drop-zone:hover,.drop-zone.drag{border-color:var(--accent);background:rgba(200,245,66,.04)}
+.drop-icon{font-size:2.5rem;margin-bottom:.75rem;display:block}
+.drop-title{font-size:15px;font-weight:500;margin-bottom:4px}
+.drop-sub{font-size:12px;color:var(--text3)}
+input[type=file]{display:none}
+
+.preview-img{width:100%;max-height:240px;object-fit:contain;border-radius:6px;border:1px solid var(--border);margin-top:1rem;display:none}
+
+.status-bar{margin-top:1rem;padding:10px 14px;border-radius:6px;font-size:13px;line-height:1.7;display:none}
+.status-loading{background:rgba(66,200,245,.08);border:1px solid rgba(66,200,245,.2);color:var(--accent2)}
+.status-ok{background:rgba(200,245,66,.08);border:1px solid rgba(200,245,66,.2);color:var(--accent)}
+.status-err{background:rgba(245,66,66,.08);border:1px solid rgba(245,66,66,.2);color:var(--red)}
+
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;vertical-align:-1px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Dims */
+.dims-card{border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:1.5rem}
+.dims-header{background:var(--surface);padding:.75rem 1.25rem;font-size:12px;color:var(--text3);font-family:var(--mono);letter-spacing:.08em;border-bottom:1px solid var(--border)}
+.dims-body{padding:1.25rem 1.5rem}
+.dims-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
+.dim-field label{display:block;font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:6px;letter-spacing:.05em}
+.dim-field input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-family:var(--mono);font-size:15px;transition:border .2s;-moz-appearance:textfield}
+.dim-field input:focus{outline:none;border-color:var(--accent)}
+.dim-field input::-webkit-outer-spin-button,.dim-field input::-webkit-inner-spin-button{-webkit-appearance:none}
+.dim-note{font-size:11px;color:var(--text3);margin-top:10px}
+
+/* Result */
+.result-card{border:1px solid var(--border);border-radius:12px;overflow:hidden;display:none}
+.result-header{background:var(--surface);padding:.75rem 1.25rem;font-size:12px;color:var(--text3);font-family:var(--mono);letter-spacing:.08em;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.area-badge{font-family:var(--mono);font-size:12px;color:var(--accent)}
+
+.tabs{display:flex;border-bottom:1px solid var(--border)}
+.tab-btn{flex:1;padding:.85rem;font-size:13px;background:none;border:none;color:var(--text3);cursor:pointer;font-family:var(--sans);transition:all .2s;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab-btn.active{color:var(--text);border-bottom-color:var(--accent)}
+.tab-btn:hover:not(.active){color:var(--text2)}
+
+.tab-content{padding:1.5rem;display:none}
+.tab-content.active{display:block}
+
+.plan-badge{display:inline-block;font-size:11px;padding:3px 10px;border-radius:4px;font-family:var(--mono);margin-bottom:1rem}
+.badge-red{background:rgba(245,66,66,.15);color:#f57272;border:1px solid rgba(245,66,66,.3)}
+.badge-blue{background:rgba(66,200,245,.15);color:#72d4f5;border:1px solid rgba(66,200,245,.3)}
+.badge-green{background:rgba(200,245,66,.15);color:var(--accent);border:1px solid rgba(200,245,66,.3)}
+
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.25rem}
+.metric{background:var(--surface2);border-radius:8px;padding:1rem;text-align:center;border:1px solid var(--border)}
+.metric-label{font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:6px}
+.metric-val{font-size:2rem;font-weight:700;color:var(--text);line-height:1;font-family:var(--mono)}
+.metric-val.accent{color:var(--accent)}
+.metric-unit{font-size:11px;color:var(--text3);margin-top:4px}
+
+.formula-box{background:var(--surface2);border-radius:6px;padding:12px 14px;font-family:var(--mono);font-size:12px;color:var(--text2);line-height:2;border:1px solid var(--border);margin-bottom:1rem}
+.formula-box .eq{color:var(--accent2)}
+
+canvas.vis{width:100%;height:140px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);display:block;margin-top:4px}
+
+/* Report */
+.report-section{margin-top:1.5rem;border-top:1px solid var(--border);padding-top:1.5rem}
+.report-title{font-size:12px;color:var(--text3);font-family:var(--mono);letter-spacing:.08em;margin-bottom:1rem}
+.report-table{width:100%;border-collapse:collapse;font-size:13px;font-family:var(--mono)}
+.report-table th{text-align:left;padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text3);font-weight:400;font-size:11px}
+.report-table td{padding:10px 12px;border-bottom:1px solid var(--border)}
+.report-table tr:last-child td{border-bottom:none}
+.report-table .hl{color:var(--accent);font-weight:500}
+
+.comment-box{background:var(--surface2);border-radius:8px;padding:1rem 1.25rem;font-size:13px;color:var(--text2);line-height:1.9;border:1px solid var(--border);margin-top:1rem}
+.comment-box b{color:var(--text);font-weight:500}
+
+.action-row{display:flex;gap:.75rem;margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+.btn{padding:9px 18px;border-radius:6px;font-size:13px;cursor:pointer;font-family:var(--sans);transition:all .2s;border:1px solid}
+.btn-accent{background:var(--accent);color:#0f0f0f;border-color:var(--accent);font-weight:700}
+.btn-accent:hover{opacity:.85}
+.btn-outline{background:none;color:var(--text2);border-color:var(--border)}
+.btn-outline:hover{border-color:var(--text2);color:var(--text)}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">COIN_PARKING</span>
+  <span class="logo-sub">/ 台数算出ツール</span>
+</header>
+
+<div class="main">
+
+  <div class="upload-card">
+    <div class="upload-header">STEP_01 / 図面アップロード → AI自動解析</div>
+    <div class="upload-body">
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <span class="drop-icon">📐</span>
+        <div class="drop-title">図面画像をドロップ</div>
+        <div class="drop-sub">JPG / PNG 対応　クリックでも選択可</div>
+      </div>
+      <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp">
+      <img id="previewImg" class="preview-img">
+      <div id="statusBar" class="status-bar"></div>
+    </div>
+  </div>
+
+  <div class="dims-card">
+    <div class="dims-header">STEP_02 / 寸法を確認・入力</div>
+    <div class="dims-body">
+      <div class="dims-grid">
+        <div class="dim-field">
+          <label>FRONTAGE / 間口（幅）</label>
+          <input type="number" id="w" min="1" step="0.1" placeholder="13.37" oninput="syncArea('wh')">
+        </div>
+        <div class="dim-field">
+          <label>DEPTH / 奥行（長さ）</label>
+          <input type="number" id="d" min="1" step="0.1" placeholder="28.07" oninput="syncArea('wh')">
+        </div>
+        <div class="dim-field">
+          <label>AREA / 面積</label>
+          <input type="number" id="a" min="1" step="1" placeholder="384.51" oninput="syncArea('area')">
+        </div>
+      </div>
+      <div class="dim-note">※ AI解析後に自動入力。手動修正も可。間口・奥行を入力すると面積を自動計算。</div>
+    </div>
+  </div>
+
+  <div class="result-card" id="resultCard">
+    <div class="result-header">
+      <span>STEP_03 / 台数算出結果</span>
+      <span class="area-badge" id="areaLabel"></span>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('max',this)">① 最大化プラン</button>
+      <button class="tab-btn" onclick="switchTab('std',this)">② 標準プラン</button>
+      <button class="tab-btn" onclick="switchTab('ease',this)">③ 保守的プラン</button>
+    </div>
+
+    <div class="tab-content active" id="tabMax">
+      <span class="plan-badge badge-red">MAX / ロス10%控除</span>
+      <div class="metrics">
+        <div class="metric"><div class="metric-label">理論台数</div><div class="metric-val accent" id="maxN">—</div><div class="metric-unit">台</div></div>
+        <div class="metric"><div class="metric-label">実効面積</div><div class="metric-val" id="maxEff">—</div><div class="metric-unit">m²</div></div>
+        <div class="metric"><div class="metric-label">1台あたり</div><div class="metric-val" id="maxPer">—</div><div class="metric-unit">m²/台</div></div>
+      </div>
+      <div class="formula-box" id="maxFormula"></div>
+      <canvas id="cvMax" class="vis"></canvas>
+    </div>
+
+    <div class="tab-content" id="tabStd">
+      <span class="plan-badge badge-blue">STD / ロス15%控除</span>
+      <div class="metrics">
+        <div class="metric"><div class="metric-label">理論台数</div><div class="metric-val accent" id="stdN">—</div><div class="metric-unit">台</div></div>
+        <div class="metric"><div class="metric-label">実効面積</div><div class="metric-val" id="stdEff">—</div><div class="metric-unit">m²</div></div>
+        <div class="metric"><div class="metric-label">1台あたり</div><div class="metric-val" id="stdPer">—</div><div class="metric-unit">m²/台</div></div>
+      </div>
+      <div class="formula-box" id="stdFormula"></div>
+      <canvas id="cvStd" class="vis"></canvas>
+    </div>
+
+    <div class="tab-content" id="tabEase">
+      <span class="plan-badge badge-green">SAFE / ロス20%控除</span>
+      <div class="metrics">
+        <div class="metric"><div class="metric-label">理論台数</div><div class="metric-val accent" id="easeN">—</div><div class="metric-unit">台</div></div>
+        <div class="metric"><div class="metric-label">実効面積</div><div class="metric-val" id="easeEff">—</div><div class="metric-unit">m²</div></div>
+        <div class="metric"><div class="metric-label">1台あたり</div><div class="metric-val" id="easePer">—</div><div class="metric-unit">m²/台</div></div>
+      </div>
+      <div class="formula-box" id="easeFormula"></div>
+      <canvas id="cvEase" class="vis"></canvas>
+    </div>
+
+    <div style="padding:0 1.5rem 1.5rem">
+      <div class="report-section">
+        <div class="report-title">SUMMARY / 3プラン比較</div>
+        <table class="report-table">
+          <thead><tr><th>プラン</th><th>ロス率</th><th>実効面積</th><th>1台あたり</th><th>推定台数</th></tr></thead>
+          <tbody>
+            <tr><td>① 最大化</td><td>10%</td><td id="s_maxEff">—</td><td>16.5 m²</td><td class="hl" id="s_maxN">—</td></tr>
+            <tr><td>② 標準</td><td>15%</td><td id="s_stdEff">—</td><td>18.0 m²</td><td class="hl" id="s_stdN">—</td></tr>
+            <tr><td>③ 保守的</td><td>20%</td><td id="s_easeEff">—</td><td>19.8 m²</td><td class="hl" id="s_easeN">—</td></tr>
+          </tbody>
+        </table>
+        <div class="comment-box" id="commentBox"></div>
+      </div>
+      <div class="action-row">
+        <button class="btn btn-accent" onclick="printReport()">📄 レポート印刷</button>
+        <button class="btn btn-outline" onclick="copyResult()">📋 結果をコピー</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let res = {};
+
+// ---- File Upload ----
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('image/')) handleFile(f);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+function handleFile(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const dataUrl = ev.target.result;
+    const prev = document.getElementById('previewImg');
+    prev.src = dataUrl; prev.style.display = 'block';
+    analyzeImage(dataUrl, file.type || 'image/jpeg');
+  };
+  reader.readAsDataURL(file);
+}
+
+function setStatus(html, cls) {
+  const el = document.getElementById('statusBar');
+  el.innerHTML = html; el.className = 'status-bar ' + cls;
+  el.style.display = html ? 'block' : 'none';
+}
+
+async function analyzeImage(dataUrl, mimeType) {
+  setStatus('<span class="spinner"></span>AIが図面を解析中...', 'status-loading');
+  const b64 = dataUrl.split(',')[1];
+  try {
+    const resp = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: b64, mimeType })
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+
+    if (data.width) document.getElementById('w').value = data.width;
+    if (data.depth) document.getElementById('d').value = data.depth;
+    if (data.area) document.getElementById('a').value = data.area;
+    else if (data.width && data.depth) document.getElementById('a').value = (data.width * data.depth).toFixed(1);
+
+    setStatus(`✅ 解析完了　間口: ${data.width||'—'}m　奥行: ${data.depth||'—'}m　面積: ${data.area||'—'}m²　${data.note ? '/ ' + data.note : ''}`, 'status-ok');
+    syncArea('wh');
+  } catch(e) {
+    setStatus('❌ エラー: ' + e.message, 'status-err');
+  }
+}
+
+// ---- Dims ----
+function syncArea(src) {
+  const w = parseFloat(document.getElementById('w').value);
+  const d = parseFloat(document.getElementById('d').value);
+  const aEl = document.getElementById('a');
+  if (src === 'wh' && w > 0 && d > 0) aEl.value = (w * d).toFixed(2);
+  else if (src === 'area') {
+    const a = parseFloat(aEl.value);
+    if (a > 0 && !document.getElementById('w').value) document.getElementById('w').value = Math.sqrt(a).toFixed(1);
+    if (a > 0 && !document.getElementById('d').value) document.getElementById('d').value = Math.sqrt(a).toFixed(1);
+  }
+  calc();
+}
+
+// ---- Calc ----
+function calcPlan(area, lossRate, perCar) {
+  const eff = area * (1 - lossRate);
+  const n = Math.floor(eff / perCar);
+  return { eff: eff.toFixed(1), n, perCar };
+}
+
+function calc() {
+  const w = parseFloat(document.getElementById('w').value);
+  const d = parseFloat(document.getElementById('d').value);
+  const a = parseFloat(document.getElementById('a').value);
+  let area = a || (w * d);
+  if (!area || area <= 0) return;
+
+  res.area = area; res.w = w; res.d = d;
+
+  const maxR  = calcPlan(area, 0.10, 16.5);
+  const stdR  = calcPlan(area, 0.15, 18.0);
+  const easeR = calcPlan(area, 0.20, 19.8);
+  res.max = maxR; res.std = stdR; res.ease = easeR;
+
+  const tsubo = (area / 3.306).toFixed(1);
+  document.getElementById('areaLabel').textContent = `${area.toFixed(1)} m²  /  ${tsubo} 坪`;
+  document.getElementById('resultCard').style.display = 'block';
+
+  // metrics
+  set('maxN', maxR.n); set('maxEff', maxR.eff); set('maxPer', maxR.perCar);
+  set('stdN', stdR.n); set('stdEff', stdR.eff); set('stdPer', stdR.perCar);
+  set('easeN', easeR.n); set('easeEff', easeR.eff); set('easePer', easeR.perCar);
+
+  // summary table
+  set('s_maxEff', maxR.eff + ' m²'); set('s_maxN', maxR.n + ' 台');
+  set('s_stdEff', stdR.eff + ' m²'); set('s_stdN', stdR.n + ' 台');
+  set('s_easeEff', easeR.eff + ' m²'); set('s_easeN', easeR.n + ' 台');
+
+  // formulas
+  document.getElementById('maxFormula').innerHTML =
+    `有効面積 = ${area.toFixed(1)} × (1 - 0.10) = <span class="eq">${maxR.eff} m²</span><br>` +
+    `台数 = ${maxR.eff} ÷ 16.5 = <span class="eq">${maxR.n} 台</span>`;
+  document.getElementById('stdFormula').innerHTML =
+    `有効面積 = ${area.toFixed(1)} × (1 - 0.15) = <span class="eq">${stdR.eff} m²</span><br>` +
+    `台数 = ${stdR.eff} ÷ 18.0 = <span class="eq">${stdR.n} 台</span>`;
+  document.getElementById('easeFormula').innerHTML =
+    `有効面積 = ${area.toFixed(1)} × (1 - 0.20) = <span class="eq">${easeR.eff} m²</span><br>` +
+    `台数 = ${easeR.eff} ÷ 19.8 = <span class="eq">${easeR.n} 台</span>`;
+
+  // comment
+  document.getElementById('commentBox').innerHTML =
+    `<b>推奨台数レンジ：${easeR.n}〜${maxR.n} 台</b><br>` +
+    `最も現実的な目安台数：<b>${stdR.n} 台</b>（標準プラン）<br>` +
+    (w && d ? `間口 ${w}m に対して幅2.5mの車室を並べると <b>${Math.floor(w/2.5)} 列</b> 確保可能。<br>` : '') +
+    `設備ロス・通路・精算機スペースを考慮した標準プランを営業提案の基準値として推奨します。`;
+
+  // canvas
+  setTimeout(() => {
+    if (w && d) {
+      drawVis('cvMax', w, d, 2.3, 4.8, 5.0);
+      drawVis('cvStd', w, d, 2.5, 5.0, 6.0);
+      drawVis('cvEase', w, d, 2.75, 5.3, 6.5);
+    }
+  }, 80);
+}
+
+function set(id, val) { document.getElementById(id).textContent = val; }
+
+function drawVis(id, W, D, sw, sd, aisle) {
+  const cv = document.getElementById(id);
+  if (!cv) return;
+  const cw = cv.clientWidth || 600, ch = 140;
+  cv.width = cw; cv.height = ch;
+  const ctx = cv.getContext('2d');
+  const scale = Math.min((cw - 20) / W, (ch - 20) / D);
+  const ox = Math.round((cw - W * scale) / 2);
+  const oy = Math.round((ch - D * scale) / 2);
+  ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0,0,cw,ch);
+  ctx.fillStyle = '#242424'; ctx.fillRect(ox, oy, W*scale, D*scale);
+  ctx.strokeStyle = '#2e2e2e'; ctx.lineWidth = 1;
+  ctx.strokeRect(ox+.5, oy+.5, W*scale-1, D*scale-1);
+  const cols = Math.floor(W/sw), unitD = sd*2+aisle, rows = Math.floor(D/unitD);
+  for (let r=0; r<rows; r++) for (let c=0; c<cols; c++) {
+    const x = ox + c*sw*scale;
+    [oy+r*unitD*scale, oy+r*unitD*scale+(sd+aisle)*scale].forEach(y => {
+      ctx.fillStyle = 'rgba(200,245,66,.15)';
+      ctx.fillRect(x+1, y+1, sw*scale-2, sd*scale-2);
+      ctx.strokeStyle = 'rgba(200,245,66,.4)'; ctx.lineWidth = .5;
+      ctx.strokeRect(x+.5, y+.5, sw*scale-1, sd*scale-1);
+    });
+  }
+  ctx.fillStyle = '#c8f542'; ctx.font = '500 11px DM Mono,monospace';
+  ctx.fillText(`${cols*rows*2} 台`, ox+6, oy+16);
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  const map = {max:'Max', std:'Std', ease:'Ease'};
+  document.getElementById('tab'+map[name]).classList.add('active');
+  if (res.w && res.d) {
+    const cfg = {max:[2.3,4.8,5.0,'cvMax'],std:[2.5,5.0,6.0,'cvStd'],ease:[2.75,5.3,6.5,'cvEase']};
+    const [s,sd,ai,cid] = cfg[name];
+    setTimeout(() => drawVis(cid, res.w, res.d, s, sd, ai), 50);
+  }
+}
+
+function printReport() { window.print(); }
+
+function copyResult() {
+  if (!res.area) return;
+  const text = `【コインパーキング台数算出結果】\n面積: ${res.area.toFixed(1)}m²\n① 最大化プラン: ${res.max.n}台\n② 標準プラン: ${res.std.n}台\n③ 保守的プラン: ${res.ease.n}台\n推奨台数: ${res.std.n}台`;
+  navigator.clipboard.writeText(text).then(() => alert('コピーしました'));
+}
+</script>
+</body>
+</html>
