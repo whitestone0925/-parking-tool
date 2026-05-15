@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "analyze.js": {
+      "runtime": "@vercel/node"
+    }
+  },
   "rewrites": [
     { "source": "/api/analyze", "destination": "/analyze.js" }
   ]
