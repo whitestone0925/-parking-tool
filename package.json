@@ -1,0 +1,8 @@
+{
+  "name": "coin-parking-tool",
+  "version": "1.0.0",
+  "description": "コインパーキング台数算出ツール",
+  "scripts": {
+    "dev": "vercel dev"
+  }
+}
